@@ -7,6 +7,7 @@ import numpy as np
 import time
 
 import gym
+import data
 from wrappers import *
 
 from memory import ReplayMemory
@@ -129,16 +130,19 @@ def train(env, n_episodes, render=False):
     return
 
 def test(env, n_episodes, policy, render=True):
+    path_array = []
     ##env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
     for episode in range(n_episodes):
+        path_array.append(data())
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
         state = get_state(obs[0])
+        path_array[episode].AddState(state)
         total_reward = 0.0
         for t in count():
             #print(state.size())
             action = policy(state.to('cuda')).max(1)[1].view(1,1)
-
+            path_array[episode].AddAction(action)
             if render:
                 env.render()
                 ##time.sleep(0.02)
@@ -153,7 +157,7 @@ def test(env, n_episodes, policy, render=True):
                 next_state = None
 
             state = next_state
-
+            path_array[episode].AddState(state)
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
