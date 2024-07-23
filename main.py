@@ -133,15 +133,31 @@ def test(env, n_episodes, policy, render=True):
     path_array = []
     ##env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
     for episode in range(n_episodes):
-        path_array.append(data())
+        path_array.append(data.dat())
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
         state = get_state(obs[0])
+        #test
+        path = 'test'
+        f = open(path, 'w')
+        if(episode==0):
+            print("----------------------------\nshape = ",state.shape)
+            f.write(str(state))
+            f.write("\n------------------------\n")
+            f.write(str(state.numpy()))
+            
+            f.close()
+        ttime=0
+        #testend
         path_array[episode].AddState(state)
+        print("-----------------\n",episode,path_array[episode].get_state())
         total_reward = 0.0
         for t in count():
+            ttime+=1
             #print(state.size())
-            action = policy(state.to('cuda')).max(1)[1].view(1,1)
+            action = policy(state).max(1)[1].view(1,1)
+            if(t==0):
+                print(action)
             path_array[episode].AddAction(action)
             if render:
                 env.render()
@@ -160,9 +176,11 @@ def test(env, n_episodes, policy, render=True):
             path_array[episode].AddState(state)
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
+                print("time =",ttime)
                 break
-
+    
     env.close()
+    print("-------------------------------\n",len( path_array[0].get_state()))
     return
 
 if __name__ == '__main__':
@@ -181,7 +199,7 @@ if __name__ == '__main__':
     INITIAL_MEMORY = 10000
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     # create environment
-    env = gym.make("ALE/Alien-v5")
+    env = gym.make("ALE/Alien-v5",render_mode = 'human')
     env=make_env(env)
     # create networks
     policy_net = DQN(n_actions=env.action_space.n).to(device)
@@ -199,8 +217,9 @@ if __name__ == '__main__':
     memory = ReplayMemory(MEMORY_SIZE)
     
     # train model
-    train(env, 30001)
-    torch.save(policy_net, "dqn_alien_model_30001")
-    #policy_net = torch.load("dqn_alien_model_30001")
-    test(env, 100, policy_net, render=True)
+    #train(env, 30001)
+    #torch.save(policy_net, "dqn_alien_model_30001")
+    
+    policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
+    test(env, 1, policy_net, render=True)
 
