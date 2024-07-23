@@ -150,7 +150,6 @@ def test(env, n_episodes, policy, render=True):
         ttime=0
         #testend
         path_array[episode].AddState(state)
-        print("-----------------\n",episode,path_array[episode].get_state())
         total_reward = 0.0
         for t in count():
             ttime+=1
@@ -176,12 +175,11 @@ def test(env, n_episodes, policy, render=True):
             path_array[episode].AddState(state)
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
-                print("time =",ttime)
                 break
     
     env.close()
-    print("-------------------------------\n",len( path_array[0].get_state()))
-    return
+    print("-------------------------------\n",len( path_array[0].get_state())) #print state lenth
+    return path_array
 
 if __name__ == '__main__':
     # set device
@@ -221,5 +219,5 @@ if __name__ == '__main__':
     #torch.save(policy_net, "dqn_alien_model_30001")
     
     policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
-    test(env, 1, policy_net, render=True)
+    path_array= test(env, 1, policy_net, render=True)
 
