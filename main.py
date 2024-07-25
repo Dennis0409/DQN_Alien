@@ -7,7 +7,6 @@ import numpy as np
 import time
 
 import gym
-import data
 from wrappers import *
 
 from memory import ReplayMemory
@@ -18,6 +17,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+
+import data
+import levenshtein_distance
+import optics
 
 Transition = namedtuple('Transion', 
                         ('state', 'action', 'next_state', 'reward'))
@@ -137,6 +140,7 @@ def test(env, n_episodes, policy, render=True):
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
         state = get_state(obs[0])
+        '''
         #test
         path = 'test'
         f = open(path, 'w')
@@ -149,14 +153,12 @@ def test(env, n_episodes, policy, render=True):
             f.close()
         ttime=0
         #testend
-        path_array[episode].AddState(state)
+        '''
+        path_array[episode].AddState(state.float())
         total_reward = 0.0
         for t in count():
-            ttime+=1
             #print(state.size())
             action = policy(state).max(1)[1].view(1,1)
-            if(t==0):
-                print(action)
             path_array[episode].AddAction(action)
             if render:
                 env.render()
@@ -168,11 +170,11 @@ def test(env, n_episodes, policy, render=True):
 
             if not done:
                 next_state = get_state(obs)
+                path_array[episode].AddState(next_state.float())
             else:
                 next_state = None
 
             state = next_state
-            path_array[episode].AddState(state)
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
@@ -197,7 +199,7 @@ if __name__ == '__main__':
     INITIAL_MEMORY = 10000
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     # create environment
-    env = gym.make("ALE/Alien-v5",render_mode = 'human')
+    env = gym.make("ALE/Alien-v5")
     env=make_env(env)
     # create networks
     policy_net = DQN(n_actions=env.action_space.n).to(device)
@@ -219,5 +221,15 @@ if __name__ == '__main__':
     #torch.save(policy_net, "dqn_alien_model_30001")
     
     policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
-    path_array= test(env, 1, policy_net, render=True)
-
+    path_array= test(env, 80, policy_net, render=False)
+    dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
+    print(dis_graph)
+    print("----------------------------------------------")
+    path = 'test'
+    f = open(path, 'w')
+    for i in dis_graph:
+        for j in i:
+            f.write(str(int(j))+ " ")
+        f.write("\n")
+    f.close()
+    optics.optic().clustering(dis_graph)

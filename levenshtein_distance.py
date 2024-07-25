@@ -38,9 +38,10 @@ class CombinedEditDistance:
                 
                 combined_dist = (self.state_weight * state_dist + 
                                  self.action_weight * action_dist)
-
-                dp[i][j] = min(dp[i-1][j] + 1,          # 刪除
-                               dp[i][j-1] + 1,          # 插入
+                combined_dist//=int(1e6) 
+                #print("comb",combined_dist)
+                dp[i][j] = min(dp[i-1][j] + 2,          # 刪除
+                               dp[i][j-1] + 2,          # 插入
                                dp[i-1][j-1] + combined_dist)  # 替換或匹配
 
         return dp[m][n]
@@ -52,11 +53,16 @@ class PathDistanceCalculator:
     def calculate_distances(self, path_array):
         n = len(path_array)
         distance_matrix = np.zeros((n, n))
-        
+        '''
+        for i in range(len( path_array)):
+            for j in range (len( path_array[i].state_array)):
+                path_array[i].state_array[j] = path_array[i].state_array[j].float()
+        '''
         for i in range(n):
             for j in range(i+1, n):
+                print("caculate",i,j)
                 dist = self.edit_distance.calculate(path_array[i], path_array[j])
-                distance_matrix[i, j] = dist
-                distance_matrix[j, i] = dist
+                distance_matrix[i, j] = dist*5
+                distance_matrix[j, i] = dist*5
         
         return distance_matrix
