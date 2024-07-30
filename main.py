@@ -77,7 +77,7 @@ def optimize_model():
     for param in policy_net.parameters():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
-
+#
 def get_state(obs,ep,p):
     #print(obs)
     state = np.array(obs)
