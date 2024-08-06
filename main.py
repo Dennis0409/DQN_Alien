@@ -5,6 +5,11 @@ import math
 import random
 import numpy as np 
 import time
+
+
+import gym
+from wrappers import *
+
 import matplotlib.pyplot as plt
 import gym
 from wrappers import *
@@ -17,6 +22,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+
+
+import data
+import levenshtein_distance
+import optics
 
 Transition = namedtuple('Transion', 
                         ('state', 'action', 'next_state', 'reward'))
@@ -77,6 +87,7 @@ def optimize_model():
     for param in policy_net.parameters():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
+
 #
 def get_state(obs,ep,p):
     #print(obs)
@@ -137,41 +148,64 @@ def train(env, n_episodes, render=False):
     return
 
 def test(env, n_episodes, policy, render=True):
-    ##env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
+    path_array = []
     global steps_done
+    ##env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
     for episode in range(n_episodes):
+        path_array.append(data.dat())
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
         state = get_state(obs[0],episode,True)
+        '''
+        #test
+        path = 'test'
+        f = open(path, 'w')
+        if(episode==0):
+            print("----------------------------\nshape = ",state.shape)
+            f.write(str(state))
+            f.write("\n------------------------\n")
+            f.write(str(state.numpy()))
+            
+            f.close()
+        ttime=0
+        #testend
+        '''
+        path_array[episode].AddState(state.float())
         total_reward = 0.0
         for t in count():
             #print(state.size())
-            
             action = policy(state.to('cuda')).max(1)[1].view(1,1)
+            path_array[episode].AddAction(action)
             steps_done+=1
             if render:
                 env.render()
                 ##time.sleep(0.02)
 
             obs, reward, done, info,_ = env.step(action)
-            
+
             total_reward += reward
 
             if not done:
                 next_state = get_state(obs,episode,True)
+                path_array[episode].AddState(next_state.float())
             else:
                 next_state = None
 
             state = next_state
-
             if done:
                 print("Finished Episode {} with reward {}".format(episode, total_reward))
                 break
-
+    
     env.close()
-    return
+    print("-------------------------------\n",len( path_array[0].get_state())) #print state lenth
+    return path_array
 
 if __name__ == '__main__':
+    tt = False
+    tt = True
+    if(tt):
+        optics.optic().test()
+        exit
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -187,7 +221,7 @@ if __name__ == '__main__':
     INITIAL_MEMORY = 10000
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     # create environment
-    env = gym.make("ALE/Alien-v5",render_mode='human')
+    env = gym.make("ALE/Alien-v5",render_mode="human")
     env=make_env(env)
     # create networks
     policy_net = DQN(n_actions=env.action_space.n).to(device)
@@ -207,6 +241,18 @@ if __name__ == '__main__':
     # train model
     #train(env, 30001)
     #torch.save(policy_net, "dqn_alien_model_30001")
-    policy_net = torch.load("dqn_alien_model_30001")
-    test(env, 100, policy_net, render=True)
-
+    
+    policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
+    path_array= test(env,40, policy_net, render=True)
+    dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
+    print(dis_graph)
+    print("----------------------------------------------")
+    path = 'test'
+    f = open(path, 'w')
+    for i in dis_graph:
+        for j in i:
+            f.write(str(int(j))+ " ")
+        f.write("\n")
+    f.close()
+    optics.optic().clustering(dis_graph)
+    optics.optic().test()
