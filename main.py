@@ -155,26 +155,11 @@ def test(env, n_episodes, policy, render=True):
         path_array.append(data.dat())
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
-        state = get_state(obs[0],episode,True)
-        '''
-        #test
-        path = 'test'
-        f = open(path, 'w')
-        if(episode==0):
-            print("----------------------------\nshape = ",state.shape)
-            f.write(str(state))
-            f.write("\n------------------------\n")
-            f.write(str(state.numpy()))
-            
-            f.close()
-        ttime=0
-        #testend
-        '''
+        state = get_state(obs[0],episode,False)
         path_array[episode].AddState(state.float())
         total_reward = 0.0
         for t in count():
-            #print(state.size())
-            action = policy(state.to('cuda')).max(1)[1].view(1,1)
+            action = policy(state).max(1)[1].view(1,1)
             path_array[episode].AddAction(action)
             steps_done+=1
             if render:
@@ -186,7 +171,7 @@ def test(env, n_episodes, policy, render=True):
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs,episode,True)
+                next_state = get_state(obs,episode,False)
                 path_array[episode].AddState(next_state.float())
             else:
                 next_state = None
@@ -197,14 +182,14 @@ def test(env, n_episodes, policy, render=True):
                 break
     
     env.close()
-    print("-------------------------------\n",len( path_array[0].get_state())) #print state lenth
+    print("-------------------------------\n L =",len( path_array[0].get_state())) #print state lenth
     return path_array
 
 if __name__ == '__main__':
     tt = False
-    tt = True
+    #tt = True
     if(tt):
-        optics.optic().test()
+        optics.optic().clustering_from_mem()
         exit
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -221,7 +206,8 @@ if __name__ == '__main__':
     INITIAL_MEMORY = 10000
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     # create environment
-    env = gym.make("ALE/Alien-v5",render_mode="human")
+    #env = gym.make("ALE/Alien-v5",render_mode="human")
+    env = gym.make("ALE/Alien-v5")
     env=make_env(env)
     # create networks
     policy_net = DQN(n_actions=env.action_space.n).to(device)
@@ -243,11 +229,11 @@ if __name__ == '__main__':
     #torch.save(policy_net, "dqn_alien_model_30001")
     
     policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
-    path_array= test(env,40, policy_net, render=True)
+    path_array= test(env,40, policy_net, render=False)
     dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
     print(dis_graph)
     print("----------------------------------------------")
-    path = 'test'
+    path = 'test.mem'
     f = open(path, 'w')
     for i in dis_graph:
         for j in i:
@@ -255,4 +241,3 @@ if __name__ == '__main__':
         f.write("\n")
     f.close()
     optics.optic().clustering(dis_graph)
-    optics.optic().test()
