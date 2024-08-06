@@ -6,9 +6,14 @@ import random
 import numpy as np 
 import time
 
+
 import gym
 from wrappers import *
 
+import matplotlib.pyplot as plt
+import gym
+from wrappers import *
+import os
 from memory import ReplayMemory
 from models import *
 
@@ -17,6 +22,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+
 
 import data
 import levenshtein_distance
@@ -82,9 +88,19 @@ def optimize_model():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
-def get_state(obs):
+#
+def get_state(obs,ep,p):
     #print(obs)
     state = np.array(obs)
+    if(p==True):
+        plt.imshow(state)
+        filename=f'./temp/{ep}/{steps_done}.png'
+        dir=os.path.dirname(filename)
+        if(dir and not os.path.exists(dir)):
+            os.makedirs(dir)
+
+        plt.savefig(filename)
+        plt.close()
     state = state.transpose((2, 0, 1))
     state = torch.from_numpy(state)
     
@@ -94,7 +110,7 @@ def train(env, n_episodes, render=False):
     for episode in range(n_episodes):
         obs= env.reset()
         
-        state = get_state(obs[0])
+        state = get_state(obs[0],episode,False)
         total_reward = 0.0
         for t in count():
             
@@ -104,12 +120,11 @@ def train(env, n_episodes, render=False):
                 env.render()
 
             obs, reward, done, info ,_= env.step(action)
-            if(steps_done%100):
-                reward_list.append(reward)
+            
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs)
+                next_state = get_state(obs,episode,False)
             else:
                 next_state = None
 
@@ -134,12 +149,13 @@ def train(env, n_episodes, render=False):
 
 def test(env, n_episodes, policy, render=True):
     path_array = []
+    global steps_done
     ##env = gym.wrappers.Monitor(env, './videos/' + 'dqn_pong_video')
     for episode in range(n_episodes):
         path_array.append(data.dat())
         obs = env.reset()
         #print(f'obs {obs[0].size()}')
-        state = get_state(obs[0])
+        state = get_state(obs[0],episode,True)
         '''
         #test
         path = 'test'
@@ -158,8 +174,9 @@ def test(env, n_episodes, policy, render=True):
         total_reward = 0.0
         for t in count():
             #print(state.size())
-            action = policy(state).max(1)[1].view(1,1)
+            action = policy(state.to('cuda')).max(1)[1].view(1,1)
             path_array[episode].AddAction(action)
+            steps_done+=1
             if render:
                 env.render()
                 ##time.sleep(0.02)
@@ -169,7 +186,7 @@ def test(env, n_episodes, policy, render=True):
             total_reward += reward
 
             if not done:
-                next_state = get_state(obs)
+                next_state = get_state(obs,episode,True)
                 path_array[episode].AddState(next_state.float())
             else:
                 next_state = None
