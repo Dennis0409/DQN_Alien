@@ -184,6 +184,11 @@ def test(env, n_episodes, policy, render=True):
     return path_array
 
 if __name__ == '__main__':
+    tt = False
+    tt = True
+    if(tt):
+        optics.optic().test()
+        exit
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -199,7 +204,7 @@ if __name__ == '__main__':
     INITIAL_MEMORY = 10000
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     # create environment
-    env = gym.make("ALE/Alien-v5")
+    env = gym.make("ALE/Alien-v5",render_mode="human")
     env=make_env(env)
     # create networks
     policy_net = DQN(n_actions=env.action_space.n).to(device)
@@ -221,7 +226,7 @@ if __name__ == '__main__':
     #torch.save(policy_net, "dqn_alien_model_30001")
     
     policy_net = torch.load("dqn_alien_model_30001", map_location=torch.device('cpu'))
-    path_array= test(env, 80, policy_net, render=False)
+    path_array= test(env,40, policy_net, render=True)
     dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
     print(dis_graph)
     print("----------------------------------------------")
@@ -233,3 +238,4 @@ if __name__ == '__main__':
         f.write("\n")
     f.close()
     optics.optic().clustering(dis_graph)
+    optics.optic().test()
