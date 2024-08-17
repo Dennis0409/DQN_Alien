@@ -55,8 +55,8 @@ class game:
             [0,0,5]
                   ]
         self.player = moveobj(1,2)
-        self.width = 3
-        self.heigth = 3
+        self.width = len(self.map)
+        self.heigth = len(self.map[0])
         self.score = 0
         self.end = False
         self.enemylist=[enemy(2,1,[(2,1),(2,0)])]
