@@ -8,8 +8,8 @@ import time
 import os
 
 from memory import ReplayMemory
-from models import DQN, DQN_small_maze  # Adjust based on your actual model definitions
-from game_small import Maze
+from models import NoisyDQN,NoisyLinear, DQN # Adjust based on your actual model definitions
+from game_small_maze import Maze
 
 import torch
 import torch.nn as nn
@@ -51,9 +51,7 @@ def select_action(state):
             action = policy_net(state.to(device)).max(1)[1].view(1, 1)
     else:
         action = torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
-    
-    # Log the selected action
-    #print(f"Step {steps_done}, Epsilon: {eps_threshold:.4f}, Selected action: {action.item()}")
+
     
     return action
 
@@ -94,9 +92,7 @@ def optimize_model():
 def get_state(obs, episode, save_image=False):
     map_info = obs['maze'] 
     #-->地圖資訊
-    map_array = np.array(map_info).reshape((MAZE_HEIGHT, MAZE_WIDTH))
-    map_array = np.resize(map_array, (32, 32))
-
+    map_array= np.array(map_info)
     normalized_map = map_array / np.max(map_array)
     
     state = torch.tensor(normalized_map, dtype=torch.float).unsqueeze(0) 
@@ -166,7 +162,7 @@ def train(env, n_episodes, render=False):
     plt.title('Loss per Episode')
     plt.legend()
     plt.grid(True)
-    plt.savefig('loss_per_episode_S1001.png')  # Save plot as an image file
+    plt.savefig('loss_per_episode_S5001.png')  # Save plot as an image file
 
 
     # Assuming you have a list `all_rewards` that tracks the rewards per episode
@@ -177,47 +173,7 @@ def train(env, n_episodes, render=False):
     plt.title('Reward per Episode')
     plt.legend()
     plt.grid(True)
-    plt.savefig('reward_per_episode_S1001.png')  # Save plot as an image file
-
-
-def test(env, n_episodes, policy, render=True, device='cpu'):
-    path_array = []
-    global steps_done
-    policy.to(device)  # Move policy network to the specified device
-
-    for episode in range(n_episodes):
-        path_array.append(data.dat())
-        obs = env.reset()
-        state = get_state(obs, episode, False).to(device)  # Ensure state is on the same device as the policy
-        path_array[episode].AddState(state.float())
-        total_reward = 0.0
-        #obs['maze']可以拿到地圖資訊
-        for t in count():
-            action = policy(state).max(1)[1].view(1, 1)
-            path_array[episode].AddAction(action)
-            steps_done += 1
-            if render:
-                env.render()
-                time.sleep(0.02)
-
-            obs, reward, done = env.step(action.item())
-
-            total_reward += reward
-
-            if not done:
-                next_state = get_state(obs, episode, False).to(device)  # Ensure next_state is on the same device as the policy
-                path_array[episode].AddState(next_state.float())
-            else:
-                next_state = None
-
-            state = next_state
-            if done:
-                print("Finished Episode {} with reward {}".format(episode, total_reward))
-                break
-
-    env.close()
-    print("-------------------------------\n L =", len(path_array[0].get_state()))  # Print state length
-    return path_array
+    plt.savefig('reward_per_episode_S5001.png')  # Save plot as an image file
 
 if __name__ == '__main__':
     tt = False
@@ -241,14 +197,16 @@ if __name__ == '__main__':
     MEMORY_SIZE = 10 * INITIAL_MEMORY
     
     # rendering_enabled 選擇要不要顯示
-    env = Maze(countdown_time=30,rendering_enabled=True)
+    env = Maze(countdown_time=30,rendering_enabled=False)
     
     # Define the number of actions in your environment
     n_actions = 4  # Adjust this based on your environment's action space
 
     # Create networks
-    policy_net = DQN_small_maze(n_actions=n_actions).to(device)
-    target_net = DQN_small_maze(n_actions=n_actions).to(device)
+    policy_net = DQN(n_actions=n_actions).to(device)
+    target_net = DQN(n_actions=n_actions).to(device)
+    # policy_net = NoisyDQN(n_actions=n_actions).to(device)
+    # target_net = NoisyDQN(n_actions=n_actions).to(device)
     target_net.load_state_dict(policy_net.state_dict())
 
     # Setup optimizer
@@ -259,17 +217,15 @@ if __name__ == '__main__':
     memory = ReplayMemory(MEMORY_SIZE)
     
     # Train model
-    #train(env, 1001)
-    #torch.save(policy_net.state_dict(), "dqn_Smaze_model_1001")
+    train(env, 5001)
+    torch.save(policy_net.state_dict(), "DQN_Smaze_5001")
     
-    # Load model
-    policy_net.load_state_dict(torch.load("dqn_Smaze_model_500", map_location=device))
-    path_array = test(env, 40, policy_net, render=False)
-    
+  
     # dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
     # print(dis_graph)
     # print("----------------------------------------------")
     
+
     # # Save distance graph
     # with open('test.mem', 'w') as f:
     #     for i in dis_graph:
