@@ -136,7 +136,7 @@ class NoisyDQN(nn.Module):
         self.features = nn.Sequential(
             nn.Conv2d(in_channels, 16, kernel_size=3, stride=2),  # Output: 7x7
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, stride=2),           # Output: 3x3
+            nn.Conv2d(16, 32, kernel_size=3, stride=1),           # Output: 3x3
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=3, stride=1)          # Output: 1x1
         )
@@ -145,7 +145,7 @@ class NoisyDQN(nn.Module):
         self._calculate_conv_output_shape(in_channels)
         
         # Define noisy linear layers with reduced input size
-        self.noisy1 = NoisyLinear(160, 128)
+        self.noisy1 = NoisyLinear(self.conv_output_size, 128)
         self.noisy2 = NoisyLinear(128, n_actions)
     
     def _calculate_conv_output_shape(self, in_channels):
@@ -156,9 +156,12 @@ class NoisyDQN(nn.Module):
     
     def forward(self, x):
         batch_size = x.size(0)
-        x = x.float() / 255
+        # Normalize the input by dividing by the maximum value in the tensor
+        max_value = x.max()
+        if max_value > 0:  # Prevent division by zero
+            x = x.float() / max_value
         x = self.features(x)
-        print(x.shape)
+        #print(x.shape)
         x = x.view(batch_size, -1)  # Flatten the tensor
         x = F.relu(self.noisy1(x))
         x = self.noisy2(x)

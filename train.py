@@ -112,12 +112,13 @@ def get_state(obs, episode, save_image=False):
 
 def train(env, n_episodes, render=False):
     all_losses = []
+    sum = 0
     for episode in range(n_episodes):
         obs = env.reset()
         state = get_state(obs, episode, False)
         total_reward = 0.0
         episode_loss = 0.0
-             
+        policy_net.reset_noise()
         for t in count():
             action = select_action(state)
             if render:
@@ -132,7 +133,7 @@ def train(env, n_episodes, render=False):
                 next_state = None
 
             reward = torch.tensor([reward], device=device)
-
+            
             memory.push(state, action.to('cuda'), next_state, reward.to('cuda'))
             state = next_state
 
@@ -143,37 +144,40 @@ def train(env, n_episodes, render=False):
 
                 if steps_done % TARGET_UPDATE == 0:
                     target_net.load_state_dict(policy_net.state_dict())
-
             if done:
                 break
-        
+        sum += total_reward
+        if episode % 10 == 9:
+            reward_list.append(sum/10)
+            sum = 0
         avg_loss = episode_loss / (t + 1) if t > 0 else 0
-        all_losses.append(avg_loss)
-        reward_list.append(total_reward)
+        # reward_list.append(total_reward)
+        # all_losses.append(avg_loss)
         print(f'Episode {episode}/{n_episodes} \t Total reward: {total_reward} \t Average loss: {avg_loss:.4f}')
     
     env.close()
-    
+
+    torch.save(policy_net.state_dict(), "NDQN_10001")
     # Plotting the loss
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(n_episodes), all_losses, label='Average Loss')
-    plt.xlabel('Episode')
-    plt.ylabel('Loss')
-    plt.title('Loss per Episode')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig('loss_per_episode_S5001.png')  # Save plot as an image file
+    # plt.figure(figsize=(10, 5))
+    # plt.plot(range(n), all_losses, label='Average Loss')
+    # plt.xlabel('Episode')
+    # plt.ylabel('Loss')
+    # plt.title('Loss per Episode')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.savefig('loss_per_episode_N10001.png')  # Save plot as an image file
 
 
     # Assuming you have a list `all_rewards` that tracks the rewards per episode
     plt.figure(figsize=(10, 5))
-    plt.plot(range(n_episodes),reward_list, label='Reward')  # Use all_rewards instead of all_losses
+    plt.plot(reward_list, label='Reward')  # Use all_rewards instead of all_losses
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.title('Reward per Episode')
+    plt.title('Reward per 10 Episode')
     plt.legend()
     plt.grid(True)
-    plt.savefig('reward_per_episode_S5001.png')  # Save plot as an image file
+    plt.savefig('reward_per_10_Episode_N10001.png')  # Save plot as an image file
 
 if __name__ == '__main__':
     tt = False
@@ -186,7 +190,7 @@ if __name__ == '__main__':
 
     # Hyperparameters
     BATCH_SIZE = 32
-    GAMMA = 0.99
+    GAMMA = 0.9
     EPS_START = 1
     EPS_END = 0.02
     EPS_DECAY = 1000000
@@ -203,10 +207,10 @@ if __name__ == '__main__':
     n_actions = 4  # Adjust this based on your environment's action space
 
     # Create networks
-    policy_net = DQN(n_actions=n_actions).to(device)
-    target_net = DQN(n_actions=n_actions).to(device)
-    # policy_net = NoisyDQN(n_actions=n_actions).to(device)
-    # target_net = NoisyDQN(n_actions=n_actions).to(device)
+    # policy_net = DQN(n_actions=n_actions).to(device)
+    # target_net = DQN(n_actions=n_actions).to(device)
+    policy_net = NoisyDQN(n_actions=n_actions).to(device)
+    target_net = NoisyDQN(n_actions=n_actions).to(device)
     target_net.load_state_dict(policy_net.state_dict())
 
     # Setup optimizer
@@ -217,8 +221,7 @@ if __name__ == '__main__':
     memory = ReplayMemory(MEMORY_SIZE)
     
     # Train model
-    train(env, 5001)
-    torch.save(policy_net.state_dict(), "DQN_Smaze_5001")
+    train(env, 10001)
     
   
     # dis_graph = levenshtein_distance.PathDistanceCalculator().calculate_distances(path_array)
